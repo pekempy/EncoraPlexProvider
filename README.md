@@ -48,30 +48,30 @@ This is different to the legacy Python agent, as it's a constantly running servi
    
    Edit `.env` and add your API keys:
    ```env
-    # Server Configuration
-    PORT=3000
-    BASE_URL=http://localhost:3000
+   # Server Configuration
+   PORT=3000
+   BASE_URL=http://localhost:3000
 
-    LOG_LEVEL=info  # Log level: error, warn, info, http, verbose, debug, silly (default: info)
+   PLEX_LIBRARY_BASE_PATH="/srv/plex/Plex/Theatre"
 
-    ### API Keys ###
+   ### API Keys ###
 
-    ENCORA_API_KEY=
-    STAGEMEDIA_API_KEY=
+   ENCORA_API_KEY=
+   STAGEMEDIA_API_KEY=
 
 
-    ### CUSTOMISATION OPTIONS###
+   ### CUSTOMISATION OPTIONS###
 
-    # {{show}}          - Title of the Show
-    # {{tour}}          - Tour Name
-    # {{date}}          - MONTH DD, YYYY
-    # {{date_iso}}      - YYYY-MM-DD
-    # {{date_usa}}      - MM-DD-YYYY
-    # {{date_numeric}}  - DD-MM-YYYY
-    # {{master}}        - Master of the recording
+   # {{show}}          - Title of the Show
+   # {{tour}}          - Tour Name
+   # {{date}}          - MONTH DD, YYYY
+   # {{date_iso}}      - YYYY-MM-DD
+   # {{date_usa}}      - MM-DD-YYYY
+   # {{date_numeric}}  - DD-MM-YYYY
+   # {{master}}        - Master of the recording
 
-    TITLE_FORMAT="{{show}} ({{tour}}) {{date}}"
-    DATE_REPLACE_CHAR="x"
+   TITLE_FORMAT="{{show}} ({{tour}}) {{date}}"
+   DATE_REPLACE_CHAR="x"
    ```
 
 ## Running the Agent
