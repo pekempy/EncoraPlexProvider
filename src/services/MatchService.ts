@@ -6,6 +6,7 @@
 import { EncoraService } from './EncoraService';
 import { MetadataResponse } from '../models/Metadata';
 import { MOVIE_PROVIDER_IDENTIFIER } from '../providers/MovieProvider';
+import { NfoParser } from './NfoParser';
 
 /**
  * Match request body parameters
@@ -37,9 +38,11 @@ export interface MatchServiceOptions {
 
 export class MatchService {
   private encoraService: EncoraService;
+  private nfoParser: NfoParser;
 
   constructor(apiKey: string) {
     this.encoraService = new EncoraService(apiKey);
+    this.nfoParser = new NfoParser();
   }
 
   /**
@@ -93,17 +96,51 @@ export class MatchService {
     }
 
     if (idToMatch) {
-      return this.encoraService.matchRecording(idToMatch);
+      const encoraResult = await this.encoraService.matchRecording(idToMatch);
+
+      // If Encora returns results, use them
+      if (encoraResult.MediaContainer.size > 0) {
+        return encoraResult;
+      }
+
+      console.log(`No Encora results found for ID ${idToMatch}, trying NFO fallback...`);
     }
 
-    // Fallback: If no GUID or we can't parse it, try title search?
-    // Use EncoraService search (currently ID only)
+    // Fallback: If no GUID or we can't parse it, try title search
     if (request.title) {
       console.log(`Searching via EncoraService for: "${request.title}"`);
-      return this.encoraService.search(request.title);
+      const searchResult = await this.encoraService.search(request.title);
+
+      // If search returns results, use them
+      if (searchResult.MediaContainer.size > 0) {
+        return searchResult;
+      }
+
+      console.log(`No Encora search results found for "${request.title}", trying NFO fallback...`);
     }
 
-    console.log('No ID found in request and no title for search. Returning empty results.');
+    // NFO Fallback: Try to find and parse NFO file if filename is provided
+    if (request.filename) {
+      console.log(`Attempting NFO fallback for filename: ${request.filename}`);
+      const nfoMetadata = this.nfoParser.tryParseNfoForFile(request.filename);
+
+      if (nfoMetadata) {
+        console.log(`Successfully parsed NFO file for: ${request.filename}`);
+        return {
+          MediaContainer: {
+            offset: 0,
+            totalSize: 1,
+            identifier: MOVIE_PROVIDER_IDENTIFIER,
+            size: 1,
+            Metadata: [nfoMetadata],
+          },
+        };
+      }
+
+      console.log(`No NFO file found for: ${request.filename}`);
+    }
+
+    console.log('No matches found via Encora or NFO. Returning empty results.');
     return {
       MediaContainer: {
         offset: 0,

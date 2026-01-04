@@ -6,6 +6,7 @@
 import { EncoraService } from './EncoraService';
 import { MetadataResponse, Image } from '../models/Metadata';
 import { MOVIE_PROVIDER_IDENTIFIER } from '../providers/MovieProvider';
+import { NfoParser } from './NfoParser';
 
 /**
  * Images response
