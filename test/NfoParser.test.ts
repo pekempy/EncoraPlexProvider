@@ -12,12 +12,13 @@ describe('NfoParser', () => {
     });
 
     describe('parseNfoContent', () => {
-        it('should parse basic NFO fields', () => {
+        it('should parse basic NFO fields and tags with attributes', () => {
             const xmlContent = `<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <movie>
    <title>Cinderella (Andrew Lloyd Webber) (West End - 2022-02-xx)</title>
    <originaltitle>Cinderella</originaltitle>
    <sorttitle>Cinderella</sorttitle>
+   <thumb aspect="poster">https://example.com/poster.jpg</thumb>
    <premiered>2022-02-01</premiered>
    <releasedate>2022-02-01</releasedate>
    <director>RhythmInMe</director>
@@ -25,6 +26,7 @@ describe('NfoParser', () => {
    <genre>Musical</genre>
    <year>2022</year>
    <studio>West End</studio>
+   <certification>UK:NFT</certification>
    <plot>Welcome to Belleville! The most aggressively picturesque town in the history of the world.</plot>
 </movie>`;
 
@@ -33,11 +35,13 @@ describe('NfoParser', () => {
             expect(result.title).toBe('Cinderella (Andrew Lloyd Webber) (West End - 2022-02-xx)');
             expect(result.originaltitle).toBe('Cinderella');
             expect(result.sorttitle).toBe('Cinderella');
+            expect(result.thumb).toBe('https://example.com/poster.jpg');
             expect(result.premiered).toBe('2022-02-01');
             expect(result.releasedate).toBe('2022-02-01');
             expect(result.director).toBe('RhythmInMe');
             expect(result.year).toBe(2022);
             expect(result.studio).toBe('West End');
+            expect(result.certification).toContain('UK:NFT');
             expect(result.plot).toBe('Welcome to Belleville! The most aggressively picturesque town in the history of the world.');
         });
 

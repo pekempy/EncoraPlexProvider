@@ -31,9 +31,11 @@ export interface MetadataServiceOptions {
 
 export class MetadataService {
   private encoraService: EncoraService;
+  private nfoParser: NfoParser;
 
   constructor(apiKey: string) {
     this.encoraService = new EncoraService(apiKey);
+    this.nfoParser = new NfoParser();
   }
 
   /**
@@ -45,15 +47,41 @@ export class MetadataService {
     ratingKey: string,
     options: MetadataServiceOptions = {}
   ): Promise<MetadataResponse> {
+    console.log(`Metadata request for ratingKey: ${ratingKey}`);
 
-    // Parse ratingKey -> encora-recording-{ID}
-    const match = ratingKey.match(/^encora-recording-(\d+)$/);
-    if (!match) {
-      throw new Error(`Invalid ratingKey format: ${ratingKey}`);
+    // Case 1: Encora ratingKey (encora-recording-{ID})
+    const encoraMatch = ratingKey.match(/^encora-recording-(\d+)$/);
+    if (encoraMatch) {
+      const id = parseInt(encoraMatch[1], 10);
+      return this.encoraService.matchRecording(id);
     }
 
-    const id = parseInt(match[1], 10);
-    return this.encoraService.matchRecording(id);
+    // Case 2: NFO ratingKey (nfo-file-{hexPath})
+    const nfoMatch = ratingKey.match(/^nfo-file-([0-9a-f]+)$/);
+    if (nfoMatch) {
+      try {
+        const hexPath = nfoMatch[1];
+        const filename = Buffer.from(hexPath, 'hex').toString('utf-8');
+        console.log(`[NFO] Fetching metadata for file: ${filename}`);
+
+        const nfoMetadata = this.nfoParser.tryParseNfoForFile(filename);
+        if (nfoMetadata) {
+          return {
+            MediaContainer: {
+              offset: 0,
+              totalSize: 1,
+              identifier: MOVIE_PROVIDER_IDENTIFIER,
+              size: 1,
+              Metadata: [nfoMetadata],
+            },
+          };
+        }
+      } catch (error) {
+        console.error(`Error processing NFO ratingKey ${ratingKey}:`, error);
+      }
+    }
+
+    throw new Error(`Invalid or unsupported ratingKey format: ${ratingKey}`);
   }
 
   /**
@@ -65,14 +93,7 @@ export class MetadataService {
     ratingKey: string,
     options: MetadataServiceOptions = {}
   ): Promise<ImagesResponse> {
-    // Parse ratingKey -> encora-recording-{ID}
-    const match = ratingKey.match(/^encora-recording-(\d+)$/);
-    if (!match) {
-      throw new Error(`Invalid ratingKey format: ${ratingKey}`);
-    }
-
-    const id = parseInt(match[1], 10);
-    const metadataResponse = await this.encoraService.matchRecording(id);
+    const metadataResponse = await this.getMetadata(ratingKey, options);
     const images = metadataResponse.MediaContainer.Metadata[0]?.Image || [];
 
     return {

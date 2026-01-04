@@ -25,6 +25,9 @@ export const config = {
     titleFormat: process.env.TITLE_FORMAT || '{{show}} {{tour}} | ({{date}}) {{master}}',
     dateReplaceChar: process.env.DATE_REPLACE_CHAR || 'x',
   },
+  plex: {
+    libraryBasePath: process.env.PLEX_LIBRARY_BASE_PATH || '',
+  },
 };
 
 /**
