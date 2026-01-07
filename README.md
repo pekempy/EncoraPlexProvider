@@ -76,6 +76,23 @@ This is different to the legacy Python agent, as it's a constantly running servi
 
 ## Running the Agent
 
+### Running with Docker
+
+You can run the provider using Docker and Docker Compose. This is the recommended way for production.
+
+1. **Configure environment variables** (if not already done):
+   ```bash
+   cp .env.example .env
+   # Edit .env and add your API keys
+   ```
+
+2. **Run with Docker Compose**:
+   ```bash
+   docker compose up -d
+   ```
+
+The provider will be available at `http://localhost:3000` (or the port specified in your `.env`).
+
 ### Development Mode
 ```bash
 npm start

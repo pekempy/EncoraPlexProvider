@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  provider:
+    build: .
+    container_name: encora-plex-provider
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    env_file:
+      - .env # This is after you have set up your environment variables
+    volumes:
+      - ./.env:/app/.env:ro
+    environment:
+      # No need to change these, these are pulled from the .env file
+      - ENCORA_API_KEY=${ENCORA_API_KEY}
+      - STAGEMEDIA_API_KEY=${STAGEMEDIA_API_KEY}
+      - PORT=${PORT:-3000}
+      - TITLE_FORMAT=${TITLE_FORMAT}
+      - DATE_REPLACE_CHAR=${DATE_REPLACE_CHAR}
+      - PLEX_LIBRARY_BASE_PATH=${PLEX_LIBRARY_BASE_PATH}
