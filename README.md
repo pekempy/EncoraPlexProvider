@@ -135,7 +135,7 @@ The provider will start on `http://localhost:3000` (or the port specified in you
 ### Agent not appearing in Plex
 - Ensure the agent is running (`npm start`)
 - Check that the URL is correct and accessible from your Plex server
-- Verify firewall settings allow connections to port 3000
+- Verify firewall settings allow connections to port 3000 (IF hosted on a machine remote from your server)
 
 ### No metadata appearing
 - Check the console logs for API errors
