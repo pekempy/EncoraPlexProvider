@@ -4,9 +4,13 @@
 
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 
-// Load .env file - ignore if not found (environment variables might be provided elsewhere)
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+// Load .env ONLY if it exists (prevents wiping Docker env vars)
+const envPath = path.resolve(process.cwd(), '.env');
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+}
 
 /**
  * Environment configuration object
@@ -50,7 +54,6 @@ export function validateConfig(): void {
     );
   }
 
-  // Log configuration status (avoiding leaking secrets)
   console.log('Configuration validated:');
   console.log(`- ENCORA_API_KEY: ${config.encora.apiKey ? 'Set (masked)' : 'NOT SET'}`);
   console.log(`- STAGEMEDIA_API_KEY: ${config.stagemedia.apiKey ? 'Set (masked)' : 'NOT SET'}`);

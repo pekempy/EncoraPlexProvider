@@ -1,4 +1,3 @@
-
 /**
  * Integration tests for Match routes
  * Note: These tests require ENCORA_API_KEY to be set in environment
@@ -6,7 +5,15 @@
 
 import request from 'supertest';
 import dotenv from 'dotenv';
-dotenv.config();
+import fs from 'fs';
+import path from 'path';
+
+// Load .env ONLY if it exists (prevents wiping Docker env vars)
+const envPath = path.resolve(process.cwd(), '.env');
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+}
+
 import { createApp } from '../src/app';
 
 // Skip tests if ENCORA_API_KEY is not set
@@ -25,7 +32,7 @@ describe('Match Routes', () => {
       const response = await request(app)
         .post('/movie/library/metadata/matches')
         .send({
-          type: 1, // movie
+          type: 1,
           title: 'Wicked {e-12345}',
           year: 2024,
         });
@@ -36,22 +43,12 @@ describe('Match Routes', () => {
     });
 
     it('should return 200 for valid match request by GUID', async () => {
-      // Mocking a request that uses an internal Plex GUID format if supported, 
-      // but currently MatchService parses: encora://12345 or similar if I implemented parseExternalGuid properly.
-      // Looking at MatchService, it parses 'com.encora.ratingKey-12345'
-
-      // However, the match endpoint usually takes 'guid' property in body.
-      // Let's test providing the title which contains the ID, as that is the primary supported method now.
-
       const response = await request(app)
         .post('/movie/library/metadata/matches')
         .send({
           type: 1,
           title: 'Some Show',
-          guid: 'com.plexapp.agents.encora://15004?lang=en'
-          // Note: MatchService.ts parses this specifically? 
-          // Let's check MatchService.ts logic again.
-          // It checks `request.guid` and tries `this.parseExternalGuid`.
+          guid: 'com.plexapp.agents.encora://15004?lang=en',
         });
 
       expect(response.status).toBe(200);
@@ -63,7 +60,7 @@ describe('Match Routes', () => {
         .send({
           type: 1,
           title: '15004',
-          manual: 1
+          manual: 1,
         });
 
       expect(response.status).toBe(200);
@@ -79,7 +76,6 @@ describe('Match Routes', () => {
         });
 
       expect(response.status).toBe(200);
-      // Since we don't have search, it should return empty if no ID found in title/filename
       expect(response.body.MediaContainer.size).toBe(0);
     });
   });
