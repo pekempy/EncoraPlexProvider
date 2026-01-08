@@ -6,9 +6,7 @@ services:
     ports:
       - "${PORT:-3000}:${PORT:-3000}"
     env_file:
-      - .env # This is after you have set up your environment variables
-    volumes:
-      - ./.env:/app/.env:ro
+      - .env
     environment:
       # No need to change these, these are pulled from the .env file
       - ENCORA_API_KEY=${ENCORA_API_KEY}

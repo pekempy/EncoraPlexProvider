@@ -5,7 +5,7 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load .env file
+// Load .env file - ignore if not found (environment variables might be provided elsewhere)
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 /**
@@ -37,15 +37,22 @@ export function validateConfig(): void {
   const errors: string[] = [];
 
   if (!config.encora.apiKey) {
-    errors.push('ENCORA_API_KEY is not set in .env file');
+    errors.push('ENCORA_API_KEY is not set');
   }
   if (!config.stagemedia.apiKey) {
-    errors.push('STAGEMEDIA_API_KEY is not set in .env file');
+    errors.push('STAGEMEDIA_API_KEY is not set');
   }
 
   if (errors.length > 0) {
     throw new Error(
-      `Configuration validation failed:\n${errors.map(e => `  - ${e}`).join('\n')}`
+      `Configuration validation failed:\n${errors.map(e => `  - ${e}`).join('\n')}\n\n` +
+      'Please ensure these are provided via .env file or environment variables.'
     );
   }
+
+  // Log configuration status (avoiding leaking secrets)
+  console.log('Configuration validated:');
+  console.log(`- ENCORA_API_KEY: ${config.encora.apiKey ? 'Set (masked)' : 'NOT SET'}`);
+  console.log(`- STAGEMEDIA_API_KEY: ${config.stagemedia.apiKey ? 'Set (masked)' : 'NOT SET'}`);
+  console.log(`- Port: ${config.server.port}`);
 }
