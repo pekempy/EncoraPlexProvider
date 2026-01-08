@@ -1,6 +1,6 @@
 services:
   provider:
-    build: .
+    image: ghcr.io/pekempy/encoraplexprovider:latest
     container_name: encora-plex-provider
     restart: unless-stopped
     ports:

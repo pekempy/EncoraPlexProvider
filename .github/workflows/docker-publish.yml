@@ -45,6 +45,6 @@ jobs:
           tag_name: ${{ steps.vars.outputs.tag }}
           name: Release ${{ steps.vars.outputs.tag }}
           body: |
-            📦 Docker image: `ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.tag }}`
+            📦 Docker image: `ghcr.io/pekempy/encoraplexprovider:${{ steps.vars.outputs.tag }}`
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
