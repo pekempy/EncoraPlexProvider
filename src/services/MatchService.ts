@@ -6,7 +6,7 @@
 import { EncoraService } from './EncoraService';
 import { MetadataResponse } from '../models/Metadata';
 import { MOVIE_PROVIDER_IDENTIFIER } from '../providers/MovieProvider';
-import { NfoParser } from './NfoParser';
+
 
 /**
  * Match request body parameters
@@ -38,11 +38,8 @@ export interface MatchServiceOptions {
 
 export class MatchService {
   private encoraService: EncoraService;
-  private nfoParser: NfoParser;
-
   constructor(apiKey: string) {
     this.encoraService = new EncoraService(apiKey);
-    this.nfoParser = new NfoParser();
   }
 
   /**
@@ -103,7 +100,7 @@ export class MatchService {
         return encoraResult;
       }
 
-      console.log(`No Encora results found for ID ${idToMatch}, trying NFO fallback...`);
+      console.log(`No Encora results found for ID ${idToMatch}`);
     }
 
     // Fallback: If no GUID or we can't parse it, try title search
@@ -116,31 +113,12 @@ export class MatchService {
         return searchResult;
       }
 
-      console.log(`No Encora search results found for "${request.title}", trying NFO fallback...`);
+      console.log(`No Encora search results found for "${request.title}"`);
     }
 
-    // NFO Fallback: Try to find and parse NFO file if filename is provided
-    if (request.filename) {
-      console.log(`Attempting NFO fallback for filename: ${request.filename}`);
-      const nfoMetadata = this.nfoParser.tryParseNfoForFile(request.filename);
 
-      if (nfoMetadata) {
-        console.log(`Successfully parsed NFO file for: ${request.filename}`);
-        return {
-          MediaContainer: {
-            offset: 0,
-            totalSize: 1,
-            identifier: MOVIE_PROVIDER_IDENTIFIER,
-            size: 1,
-            Metadata: [nfoMetadata],
-          },
-        };
-      }
 
-      console.log(`No NFO file found for: ${request.filename}`);
-    }
-
-    console.log('No matches found via Encora or NFO. Returning empty results.');
+    console.log('No matches found via Encora. Returning empty results.');
     return {
       MediaContainer: {
         offset: 0,

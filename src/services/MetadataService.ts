@@ -6,7 +6,7 @@
 import { EncoraService } from './EncoraService';
 import { MetadataResponse, Image } from '../models/Metadata';
 import { MOVIE_PROVIDER_IDENTIFIER } from '../providers/MovieProvider';
-import { NfoParser } from './NfoParser';
+
 
 /**
  * Images response
@@ -31,11 +31,8 @@ export interface MetadataServiceOptions {
 
 export class MetadataService {
   private encoraService: EncoraService;
-  private nfoParser: NfoParser;
-
   constructor(apiKey: string) {
     this.encoraService = new EncoraService(apiKey);
-    this.nfoParser = new NfoParser();
   }
 
   /**
@@ -54,31 +51,6 @@ export class MetadataService {
     if (encoraMatch) {
       const id = parseInt(encoraMatch[1], 10);
       return this.encoraService.matchRecording(id);
-    }
-
-    // Case 2: NFO ratingKey (nfo-file-{hexPath})
-    const nfoMatch = ratingKey.match(/^nfo-file-([0-9a-f]+)$/);
-    if (nfoMatch) {
-      try {
-        const hexPath = nfoMatch[1];
-        const filename = Buffer.from(hexPath, 'hex').toString('utf-8');
-        console.log(`[NFO] Fetching metadata for file: ${filename}`);
-
-        const nfoMetadata = this.nfoParser.tryParseNfoForFile(filename);
-        if (nfoMetadata) {
-          return {
-            MediaContainer: {
-              offset: 0,
-              totalSize: 1,
-              identifier: MOVIE_PROVIDER_IDENTIFIER,
-              size: 1,
-              Metadata: [nfoMetadata],
-            },
-          };
-        }
-      } catch (error) {
-        console.error(`Error processing NFO ratingKey ${ratingKey}:`, error);
-      }
     }
 
     throw new Error(`Invalid or unsupported ratingKey format: ${ratingKey}`);

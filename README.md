@@ -12,7 +12,7 @@ This is different to the legacy Python agent, as it's a constantly running servi
 - **NFT Status**: Displays NFT status as content rating
 - **ID-Based Search**: Search by Encora recording ID (e.g., `15004`)
 - **Customizable Titles**: Configure title format via environment variables
-- **NFO Fallback**: Automatic fallback to local NFO files when Encora matching fails (see [NFO-Fallback.md](docs/NFO-Fallback.md))
+
 
 ## Future Features
 
@@ -136,7 +136,7 @@ The provider will start on `http://localhost:3000` (or the port specified in you
    - **By ID**: Include the Encora recording ID in your filename    
        For example: `[2018-11-__] 42nd Street ~ pro-shot {e-15004}`    
        The `{e-15004}` is the most important part, as this is what will be used for auto-matching.
-   - **NFO Fallback**: If no Encora match is found, the agent will automatically look for an NFO file next to your video file. See [NFO-Fallback.md](docs/NFO-Fallback.md) for details.
+
 
 ## API Endpoints
 
