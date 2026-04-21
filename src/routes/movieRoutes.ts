@@ -8,6 +8,8 @@ import { MetadataService } from '../services/MetadataService';
 import { config } from '../config/env';
 import { API_PATHS } from '../constants';
 import { getMovieProviderResponse } from '../providers/MovieProvider';
+import fs from 'fs';
+import path from 'path';
 
 const router = Router();
 
@@ -396,6 +398,57 @@ router.post(API_PATHS.LIBRARY_MATCHES, async (req: Request, res: Response) => {
       message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
+});
+
+/**
+ * @openapi
+ * /subtitles:
+ *   get:
+ *     tags:
+ *       - Subtitles
+ *     summary: Serve a local subtitle file
+ *     description: Streams a local subtitle file from the filesystem
+ *     parameters:
+ *       - in: query
+ *         name: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Full path to the subtitle file
+ *     responses:
+ *       200:
+ *         description: Subtitle file stream
+ *       404:
+ *         description: File not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/subtitles', (req: Request, res: Response) => {
+  const filePath = req.query.path as string;
+
+  if (!filePath) {
+    res.status(400).json({ error: 'Path parameter is required' });
+    return;
+  }
+
+  // Security check: ensure the path is within the libraryBasePath
+  if (config.plex.libraryBasePath && !filePath.startsWith(config.plex.libraryBasePath)) {
+    res.status(403).json({ error: 'Access denied: path is outside library base' });
+    return;
+  }
+
+  if (!fs.existsSync(filePath)) {
+    res.status(404).json({ error: 'File not found' });
+    return;
+  }
+
+  const ext = path.extname(filePath).toLowerCase();
+  let contentType = 'text/plain';
+  if (ext === '.srt') contentType = 'application/x-subrip';
+  if (ext === '.vtt') contentType = 'text/vtt';
+
+  res.setHeader('Content-Type', contentType);
+  fs.createReadStream(filePath).pipe(res);
 });
 
 export default router;

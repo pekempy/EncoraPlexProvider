@@ -82,9 +82,10 @@ export class EncoraMapper {
 
         // Map subtitles
         const mappedSubtitles: Subtitle[] = subtitles ? subtitles.map(sub => ({
-            id: sub.url,
+            id: sub.url.startsWith('http') || sub.url.startsWith('/') ? sub.url : sub.url,
             language: this.mapLanguage(sub.language),
             format: sub.file_type.toLowerCase(),
+            forced: sub.author === 'Forced',
         })) : [];
 
         const metadata: MovieMetadata = {
@@ -216,7 +217,7 @@ export class EncoraMapper {
                 "July", "August", "September", "October", "November", "December"];
 
             let dateText = "";
-            let dateIso = `${year}-${month}-${day}`;
+            let dateIsoValue = `${year}-${month}-${day}`;
             let dateUsa = `${month}-${day}-${year}`;
             let dateNumeric = `${day}-${month}-${year}`;
 
@@ -225,7 +226,7 @@ export class EncoraMapper {
                 const mName = (mIndex >= 0 && mIndex < 12) ? monthNames[mIndex] : "Unknown";
                 dateText += mName;
             } else {
-                dateText += replaceChar.repeat(3); // or ???
+                dateText += replaceChar.repeat(3);
             }
 
             dateText += " ";
@@ -233,16 +234,16 @@ export class EncoraMapper {
             dateText += ", ";
             dateText += year;
 
-
             let title = format;
             title = title.replace(/{{show}}/g, recording.show || '');
             title = title.replace(/{{tour}}/g, recording.tour || '');
             title = title.replace(/{{master}}/g, recording.master || '');
-
             title = title.replace(/{{date}}/g, dateText);
-            title = title.replace(/{{date_iso}}/g, dateIso);
+            title = title.replace(/{{date_iso}}/g, dateIsoValue);
             title = title.replace(/{{date_usa}}/g, dateUsa);
             title = title.replace(/{{date_numeric}}/g, dateNumeric);
+
+            return title.trim();
 
             return title.trim();
         } catch (e) {

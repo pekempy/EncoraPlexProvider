@@ -8,16 +8,19 @@ import { EncoraMapper } from '../mappers/EncoraMapper';
 import { config } from '../config/env';
 import { MetadataResponse, MovieMetadata } from '../models/Metadata';
 import { MOVIE_PROVIDER_IDENTIFIER } from '../providers/MovieProvider';
+import { FileSystemService } from './FileSystemService';
 
 export class EncoraService {
     private encoraClient: EncoraClient;
     private stageMediaClient: StageMediaClient;
     private mapper: EncoraMapper;
+    private fileSystemService: FileSystemService;
 
     constructor(apiKey: string) {
         this.encoraClient = new EncoraClient(apiKey);
         this.stageMediaClient = new StageMediaClient(config.stagemedia.apiKey);
         this.mapper = new EncoraMapper();
+        this.fileSystemService = new FileSystemService();
     }
 
     /**
@@ -47,6 +50,29 @@ export class EncoraService {
             } catch (subError) {
                 console.error('Failed to fetch subtitles:', subError);
                 // Non-fatal
+            }
+
+            // Fetch local subtitles if libraryBasePath is set
+            if (config.plex.libraryBasePath) {
+                try {
+                    const localDir = this.fileSystemService.findRecordingDirectory(id);
+                    if (localDir) {
+                        const localSubtitles = this.fileSystemService.findSubtitles(localDir);
+                        console.log(`Found ${localSubtitles.length} local subtitles in ${localDir}`);
+
+                        // Map local subtitles to EncoraSubtitle format so the mapper can handle them
+                        const mappedLocalSubs = localSubtitles.map(ls => ({
+                            recording_id: id,
+                            url: `${config.server.baseUrl}/subtitles?path=${encodeURIComponent(ls.path)}`,
+                            language: ls.language || 'Unknown',
+                            file_type: ls.path.split('.').pop()?.toUpperCase() || 'SRT',
+                            author: 'Local'
+                        }));
+                        subtitles.push(...mappedLocalSubs);
+                    }
+                } catch (fsError) {
+                    console.error('Failed to scan local filesystem for subtitles:', fsError);
+                }
             }
 
             const metadata = this.mapper.mapRecording(recording, stageMediaImages, subtitles);

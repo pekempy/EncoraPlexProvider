@@ -24,6 +24,7 @@ export const config = {
   },
   server: {
     port: parseInt(process.env.PORT || '3000', 10),
+    baseUrl: process.env.BASE_URL || 'http://localhost:3000',
   },
   formatting: {
     titleFormat: process.env.TITLE_FORMAT || '{{show}} {{tour}} | ({{date}}) {{master}}',

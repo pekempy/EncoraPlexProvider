@@ -1,0 +1,110 @@
+import fs from 'fs';
+import path from 'path';
+import { config } from '../config/env';
+
+export interface LocalSubtitle {
+  path: string;
+  name: string;
+  language?: string;
+}
+
+export class FileSystemService {
+  /**
+   * Finds the recording directory by its ID {e-ID}
+   */
+  public findRecordingDirectory(recordingId: number): string | null {
+    const basePath = config.plex.libraryBasePath;
+    if (!basePath || !fs.existsSync(basePath)) {
+      return null;
+    }
+
+    const idPattern = `{e-${recordingId}}`;
+    const idPatternAlt = `{e ${recordingId}}`;
+
+    // Simple one-level deep scan for now to avoid massive recursion
+    // The user's example is in /srv/plex/Plex/Theatre/
+    // So we might need to scan subdirectories
+    return this.searchDirectoryRecursive(basePath, idPattern, idPatternAlt, 2);
+  }
+
+  /**
+   * Recursively search for a directory containing the ID pattern
+   */
+  private searchDirectoryRecursive(
+    currentPath: string, 
+    pattern: string, 
+    patternAlt: string, 
+    maxDepth: number, 
+    currentDepth: number = 0
+  ): string | null {
+    if (currentDepth > maxDepth) return null;
+
+    try {
+      const items = fs.readdirSync(currentPath, { withFileTypes: true });
+      
+      // Check current level first
+      for (const item of items) {
+        if (item.isDirectory()) {
+          if (item.name.toLowerCase().includes(pattern.toLowerCase()) || 
+              item.name.toLowerCase().includes(patternAlt.toLowerCase())) {
+            return path.join(currentPath, item.name);
+          }
+        }
+      }
+
+      // Recurse
+      for (const item of items) {
+        if (item.isDirectory() && !item.name.startsWith('.')) {
+          const found = this.searchDirectoryRecursive(
+            path.join(currentPath, item.name), 
+            pattern, 
+            patternAlt, 
+            maxDepth, 
+            currentDepth + 1
+          );
+          if (found) return found;
+        }
+      }
+    } catch (err) {
+      console.error(`Error scanning directory ${currentPath}:`, err);
+    }
+
+    return null;
+  }
+
+  /**
+   * Finds all subtitle files in a directory
+   */
+  public findSubtitles(directoryPath: string): LocalSubtitle[] {
+    const subtitles: LocalSubtitle[] = [];
+    try {
+      const items = fs.readdirSync(directoryPath);
+      for (const item of items) {
+        if (item.toLowerCase().endsWith('.srt') || item.toLowerCase().endsWith('.vtt')) {
+          subtitles.push({
+            path: path.join(directoryPath, item),
+            name: item,
+            language: this.guessLanguage(item)
+          });
+        }
+      }
+    } catch (err) {
+      console.error(`Error finding subtitles in ${directoryPath}:`, err);
+    }
+    return subtitles;
+  }
+
+  /**
+   * Basic language guesser from filename (e.g., name.en.srt)
+   */
+  private guessLanguage(filename: string): string | undefined {
+    const parts = filename.split('.');
+    if (parts.length >= 3) {
+      const langCode = parts[parts.length - 2].toLowerCase();
+      if (langCode.length === 2 || langCode.length === 3) {
+        return langCode;
+      }
+    }
+    return undefined;
+  }
+}
