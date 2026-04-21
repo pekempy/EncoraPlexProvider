@@ -6,6 +6,7 @@
 import { EncoraService } from './EncoraService';
 import { MetadataResponse, Image } from '../models/Metadata';
 import { MOVIE_PROVIDER_IDENTIFIER } from '../providers/MovieProvider';
+import { NfoService } from './NfoService';
 
 
 /**
@@ -31,8 +32,11 @@ export interface MetadataServiceOptions {
 
 export class MetadataService {
   private encoraService: EncoraService;
+  private nfoService: NfoService;
+
   constructor(apiKey: string) {
     this.encoraService = new EncoraService(apiKey);
+    this.nfoService = new NfoService();
   }
 
   /**
@@ -51,6 +55,32 @@ export class MetadataService {
     if (encoraMatch) {
       const id = parseInt(encoraMatch[1], 10);
       return this.encoraService.matchRecording(id);
+    }
+
+    // Case 2: Local NFO ratingKey (local-nfo-{BASE64_PATH})
+    const nfoMatch = ratingKey.match(/^local-nfo-(.+)$/);
+    if (nfoMatch) {
+      const base64 = nfoMatch[1]
+        .replace(/-/g, '+')
+        .replace(/_/g, '/');
+      
+      // Add back padding if needed
+      const paddedBase64 = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+      
+      const filePath = Buffer.from(paddedBase64, 'base64').toString('utf-8');
+      console.log(`Metadata request for local NFO: ${filePath}`);
+      const metadata = this.nfoService.parseMovieNfo(filePath);
+      if (metadata) {
+        return {
+          MediaContainer: {
+            offset: 0,
+            totalSize: 1,
+            identifier: MOVIE_PROVIDER_IDENTIFIER,
+            size: 1,
+            Metadata: [metadata],
+          },
+        };
+      }
     }
 
     throw new Error(`Invalid or unsupported ratingKey format: ${ratingKey}`);

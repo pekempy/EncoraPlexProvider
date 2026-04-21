@@ -6,6 +6,10 @@
 import { EncoraService } from './EncoraService';
 import { MetadataResponse } from '../models/Metadata';
 import { MOVIE_PROVIDER_IDENTIFIER } from '../providers/MovieProvider';
+import { FileSystemService } from './FileSystemService';
+import { NfoService } from './NfoService';
+import { config } from '../config/env';
+import path from 'path';
 
 
 /**
@@ -38,8 +42,13 @@ export interface MatchServiceOptions {
 
 export class MatchService {
   private encoraService: EncoraService;
+  private fileSystemService: FileSystemService;
+  private nfoService: NfoService;
+
   constructor(apiKey: string) {
     this.encoraService = new EncoraService(apiKey);
+    this.fileSystemService = new FileSystemService();
+    this.nfoService = new NfoService();
   }
 
   /**
@@ -92,7 +101,18 @@ export class MatchService {
       console.log(`Treating numeric title "${request.title}" as ID: ${idToMatch}`);
     }
 
-    if (idToMatch) {
+    let skipEncora = false;
+    const nePattern = /{[Nn][Ee]}/;
+
+    if (request.title && nePattern.test(request.title)) {
+        console.log(`Found {ne} tag in title: "${request.title}". Skipping Encora search.`);
+        skipEncora = true;
+    } else if (request.filename && nePattern.test(request.filename)) {
+        console.log(`Found {ne} tag in filename: "${request.filename}". Skipping Encora search.`);
+        skipEncora = true;
+    }
+
+    if (idToMatch && !skipEncora) {
       const encoraResult = await this.encoraService.matchRecording(idToMatch);
 
       // If Encora returns results, use them
@@ -104,7 +124,7 @@ export class MatchService {
     }
 
     // Fallback: If no GUID or we can't parse it, try title search
-    if (request.title) {
+    if (request.title && !skipEncora) {
       console.log(`Searching via EncoraService for: "${request.title}"`);
       const searchResult = await this.encoraService.search(request.title);
 
@@ -116,9 +136,33 @@ export class MatchService {
       console.log(`No Encora search results found for "${request.title}"`);
     }
 
+    console.log(`Checking NFO Fallback: filename=${request.filename}, libraryBasePath=${config.plex.libraryBasePath}`);
 
+    // Fallback 2: Check for local NFO file if filename is provided
+    if (request.filename && config.plex.libraryBasePath) {
+      const fullPath = path.join(config.plex.libraryBasePath, request.filename);
+      console.log(`Checking for NFO fallback for: ${fullPath}`);
+      
+      const nfoPath = this.fileSystemService.findNfoFile(fullPath);
+      if (nfoPath) {
+        console.log(`Found NFO fallback: ${nfoPath}`);
+        const nfoMetadata = this.nfoService.parseMovieNfo(nfoPath);
+        
+        if (nfoMetadata) {
+          return {
+            MediaContainer: {
+              offset: 0,
+              totalSize: 1,
+              identifier: MOVIE_PROVIDER_IDENTIFIER,
+              size: 1,
+              Metadata: [nfoMetadata],
+            },
+          };
+        }
+      }
+    }
 
-    console.log('No matches found via Encora. Returning empty results.');
+    console.log('No matches found via Encora or NFO. Returning empty results.');
     return {
       MediaContainer: {
         offset: 0,

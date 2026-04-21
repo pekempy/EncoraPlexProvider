@@ -15,3 +15,5 @@ services:
       - TITLE_FORMAT=${TITLE_FORMAT}
       - DATE_REPLACE_CHAR=${DATE_REPLACE_CHAR}
       - PLEX_LIBRARY_BASE_PATH=${PLEX_LIBRARY_BASE_PATH}
+    volumes:
+      - ${PLEX_LIBRARY_BASE_PATH:-/srv/plex/Plex}:${PLEX_LIBRARY_BASE_PATH:-/srv/plex/Plex}:ro

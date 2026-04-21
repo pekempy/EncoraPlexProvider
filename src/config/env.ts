@@ -59,4 +59,6 @@ export function validateConfig(): void {
   console.log(`- ENCORA_API_KEY: ${config.encora.apiKey ? 'Set (masked)' : 'NOT SET'}`);
   console.log(`- STAGEMEDIA_API_KEY: ${config.stagemedia.apiKey ? 'Set (masked)' : 'NOT SET'}`);
   console.log(`- Port: ${config.server.port}`);
+  console.log(`- Base URL: ${config.server.baseUrl}`);
+  console.log(`- Library Base Path: ${config.plex.libraryBasePath || 'NOT SET (NFO fallback will be disabled)'}`);
 }

@@ -107,4 +107,37 @@ export class FileSystemService {
     }
     return undefined;
   }
+
+  /**
+   * Finds an NFO file in the same directory as the media file
+   */
+  public findNfoFile(mediaPath: string): string | null {
+    const directory = path.dirname(mediaPath);
+    if (!fs.existsSync(directory)) return null;
+
+    try {
+      const items = fs.readdirSync(directory);
+      
+      // 1. Look for movie.nfo
+      if (items.some(i => i.toLowerCase() === 'movie.nfo')) {
+        return path.join(directory, items.find(i => i.toLowerCase() === 'movie.nfo')!);
+      }
+
+      // 2. Look for [filename].nfo
+      const filename = path.basename(mediaPath, path.extname(mediaPath));
+      if (items.some(i => i.toLowerCase() === `${filename.toLowerCase()}.nfo`)) {
+        return path.join(directory, items.find(i => i.toLowerCase() === `${filename.toLowerCase()}.nfo`)!);
+      }
+
+      // 3. Look for any .nfo file (fallback)
+      const nfoFiles = items.filter(i => i.toLowerCase().endsWith('.nfo'));
+      if (nfoFiles.length > 0) {
+        return path.join(directory, nfoFiles[0]);
+      }
+    } catch (err) {
+      console.error(`Error finding NFO in ${directory}:`, err);
+    }
+
+    return null;
+  }
 }
