@@ -82,13 +82,12 @@ export class EncoraMapper {
             }
         }
 
-        // Map subtitles
-        const mappedSubtitles: Subtitle[] = subtitles ? subtitles.map(sub => ({
-            id: sub.url,
-            language: this.mapLanguage(sub.language),
-            format: sub.file_type.toLowerCase(),
-            forced: sub.author === 'Forced',
-        })) : [];
+        // Map subtitles helper
+        const getSubtitleTitle = (sub: EncoraSubtitle) => {
+            const author = sub.author === 'Local' ? 'Local' : sub.author;
+            const coverage = sub.coverage ? ` [${sub.coverage}]` : '';
+            return `${author}${coverage}`;
+        };
 
         // Construct Media object for modern Plex agent support
         const media: Media[] = [];
@@ -104,13 +103,13 @@ export class EncoraMapper {
                     Stream: (subtitles || []).map((sub, index) => ({
                         id: 1000 + index,
                         streamType: 3,
-                        codec: 'srt',
+                        codec: sub.file_type.toLowerCase(),
                         language: this.mapLanguage(sub.language),
                         languageTag: this.mapLanguage(sub.language),
                         languageCode: this.mapLanguage(sub.language) === 'en' ? 'eng' : 'und',
                         url: sub.url,
-                        format: 'srt',
-                        title: sub.author === 'Local' ? `Local - ${sub.language}` : `Encora - ${sub.author}`,
+                        format: sub.file_type.toLowerCase(),
+                        title: getSubtitleTitle(sub),
                         forced: sub.author === 'Forced',
                         transient: 1,
                         streamIdentifier: (1000 + index).toString(),
@@ -142,9 +141,9 @@ export class EncoraMapper {
                 language: this.mapLanguage(s.language) === 'en' ? 'English' : s.language,
                 languageTag: this.mapLanguage(s.language),
                 languageCode: this.mapLanguage(s.language) === 'en' ? 'eng' : 'und',
-                format: 'srt',
+                format: s.file_type.toLowerCase(),
                 forced: s.author === 'Forced',
-                title: s.author === 'Local' ? 'Local' : `Encora (${s.author})`
+                title: getSubtitleTitle(s)
             })),
             Role: roles.length > 0 ? roles : undefined,
             Actor: roles.length > 0 ? roles : undefined,
@@ -163,13 +162,13 @@ export class EncoraMapper {
                             id: 1000 + index,
                             streamType: 3,
                             selected: true, // Priority flag
-                            codec: 'srt',
+                            codec: sub.file_type.toLowerCase(),
                             language: this.mapLanguage(sub.language),
                             languageTag: this.mapLanguage(sub.language),
                             languageCode: this.mapLanguage(sub.language) === 'en' ? 'eng' : 'und',
                             url: sub.url,
-                            format: 'srt',
-                            title: sub.author === 'Local' ? 'Local' : `Encora (${sub.author})`,
+                            format: sub.file_type.toLowerCase(),
+                            title: getSubtitleTitle(sub),
                             transient: 1
                         }))
                     }]
@@ -201,7 +200,7 @@ export class EncoraMapper {
         // Direct mapping
         if (lang === 'english' || lang === 'en' || lang === 'eng') return 'en';
         if (lang === 'french' || lang === 'fr' || lang === 'fra') return 'fr';
-        if (lang === 'spanish' || lang === 'es' || lang === 'spa') return 'es';
+        if (lang === 'spanish' || lang === 'es' || lang === 'spa' || lang === 'sp') return 'es';
         if (lang === 'dutch' || lang === 'nl' || lang === 'nld') return 'nl';
         if (lang === 'german' || lang === 'de' || lang === 'deu' || lang === 'ger') return 'de';
         if (lang === 'italian' || lang === 'it' || lang === 'ita') return 'it';
@@ -213,6 +212,8 @@ export class EncoraMapper {
             'english': 'en',
             'french': 'fr',
             'spanish': 'es',
+            'es': 'es',
+            'sp': 'es',
             'dutch': 'nl',
             'german': 'de',
             'portuguese': 'pt',
@@ -283,7 +284,6 @@ export class EncoraMapper {
 
             return title.trim();
 
-            return title.trim();
         } catch (e) {
             console.error('Error formatting title:', e);
             return recording.show; // Fallback

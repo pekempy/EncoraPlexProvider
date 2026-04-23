@@ -81,13 +81,16 @@ export class EncoraService {
                         // 2. If no local subtitles but we have Encora subtitles, download them!
                         if (existingLocal.length === 0 && subtitles.length > 0) {
                             const videoFile = this.fileSystemService.findVideoFile(localDir);
-                            const baseName = videoFile ? videoFile.substring(0, videoFile.lastIndexOf('.')) : 'Encora';
+                            const videoBaseName = videoFile ? videoFile.substring(0, videoFile.lastIndexOf('.')) : 'Encora';
                             
                             for (const sub of subtitles) {
                                 if (sub.author !== 'Local' && sub.url && sub.url.startsWith('http')) {
                                     const ext = sub.file_type.toLowerCase();
-                                    const langCode = this.mapper.mapLanguage(sub.language);
-                                    const subFilename = `${baseName}.${langCode}.${ext}`;
+                                    const langSuffix = sub.language.length <= 3 ? sub.language.toLowerCase() : this.mapper.mapLanguage(sub.language);
+                                    
+                                    const coverage = sub.coverage ? ` [${sub.coverage}]` : '';
+                                    const subFilename = `${sub.author}${coverage}.${langSuffix}.${ext}`;
+                                    
                                     await this.fileSystemService.downloadSubtitle(sub.url, localDir, subFilename);
                                 }
                             }
@@ -99,13 +102,19 @@ export class EncoraService {
                         localSubtitles = existingLocal;
 
                         // 3. Map all found local subtitles to proxy URLs
-                        const mappedLocalSubs = existingLocal.map(ls => ({
-                            recording_id: id,
-                            url: `${config.server.baseUrl}/subtitles?path=${encodeURIComponent(ls.path)}`,
-                            language: ls.language || 'Unknown',
-                            file_type: ls.path.split('.').pop()?.toUpperCase() || 'SRT',
-                            author: 'Local'
-                        }));
+                        const mappedLocalSubs = existingLocal.map(ls => {
+                            const ext = ls.path.split('.').pop()?.toUpperCase() || 'SRT';
+                            const displayType = (ext === 'SUB' || ext === 'IDX') ? 'VOBSUB' : ext;
+                            
+                            return {
+                                recording_id: id,
+                                url: `${config.server.baseUrl}/subtitles?path=${encodeURIComponent(ls.path)}`,
+                                language: ls.language || 'Unknown',
+                                file_type: displayType,
+                                author: ls.author || 'Local',
+                                coverage: ls.coverage
+                            };
+                        });
                         
                         // Replace or append local subtitles
                         const remoteOnly = subtitles.filter(s => {
@@ -163,7 +172,7 @@ export class EncoraService {
     private async triggerPlexUpload(guid: string, localSubtitles: any[]): Promise<void> {
         if (localSubtitles.length === 0) return;
 
-        console.log(`[EncoraService] Attempting to force-upload ${localSubtitles.length} subtitles for GUID ${guid}`);
+        console.log(`[EncoraService] Attempting to manage subtitles for GUID ${guid}`);
         
         // Wait a small bit for Plex to process the metadata/match if this is a fresh match
         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -174,9 +183,46 @@ export class EncoraService {
             return;
         }
 
+        const deletedIds = new Set<number>();
+        
         for (const sub of localSubtitles) {
+            // Re-fetch existing streams inside the loop to avoid stale data and double-deletes
+            const existingStreams = await this.plexService.getSubtitleStreams(ratingKey);
+            
             const langCode = this.mapper.mapLanguage(sub.language);
-            await this.plexService.uploadSubtitle(ratingKey, sub.path, langCode);
+            const plexLang = langCode === 'en' ? 'eng' : (langCode === 'es' ? 'spa' : langCode);
+            const coverage = sub.coverage ? ` [${sub.coverage}]` : '';
+            const variant = (sub.language === 'sp' || sub.language === 'SP') ? ' (SP)' : '';
+            const targetTitle = `${sub.author || 'Local'}${coverage}${variant}`;
+
+            // 2. Find and delete duplicates
+            const duplicates = existingStreams.filter(s => {
+                if (deletedIds.has(s.id)) return false;
+                
+                const sTitle = s.title || s.extendedDisplayTitle || '';
+                const isUnknown = !s.languageCode || s.languageCode === 'und';
+                const titleMatch = sTitle.includes(targetTitle) || sTitle === 'Local' || sTitle === '';
+                
+                // Only match if the language also matches (to avoid deleting Spanish when processing English)
+                // or if it's one of those broken 'Unknown' tracks
+                const langMatch = s.languageCode === plexLang || isUnknown;
+                
+                return titleMatch && langMatch;
+            });
+
+            if (duplicates.length > 0) {
+                console.log(`[EncoraService] Removing ${duplicates.length} duplicate/broken streams for "${targetTitle}" (${plexLang})`);
+                for (const dupe of duplicates) {
+                    const deleted = await this.plexService.deleteStream(dupe.id);
+                    if (deleted) {
+                        deletedIds.add(dupe.id);
+                        console.log(`[EncoraService] Successfully removed old stream ID ${dupe.id} (${dupe.languageCode || 'unknown'})`);
+                    }
+                }
+            }
+
+            // 3. Upload fresh copy
+            await this.plexService.uploadSubtitle(ratingKey, sub.path, langCode, targetTitle);
         }
     }
 }

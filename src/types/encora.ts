@@ -80,4 +80,5 @@ export interface EncoraSubtitle {
     author: string;
     file_type: string;
     url: string;
+    coverage?: string;
 }

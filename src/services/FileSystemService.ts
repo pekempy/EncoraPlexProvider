@@ -6,6 +6,8 @@ export interface LocalSubtitle {
   path: string;
   name: string;
   language?: string;
+  author?: string;
+  coverage?: string;
 }
 
 export class FileSystemService {
@@ -80,11 +82,23 @@ export class FileSystemService {
     try {
       const items = fs.readdirSync(directoryPath);
       for (const item of items) {
-        if (item.toLowerCase().endsWith('.srt') || item.toLowerCase().endsWith('.vtt')) {
+        const lowerItem = item.toLowerCase();
+        // Support common text formats + VobSub (idx/sub)
+        const isSub = lowerItem.endsWith('.srt') || 
+                      lowerItem.endsWith('.vtt') || 
+                      lowerItem.endsWith('.ass') || 
+                      lowerItem.endsWith('.ssa') ||
+                      lowerItem.endsWith('.idx') ||
+                      lowerItem.endsWith('.sub');
+
+        if (isSub) {
+          const info = this.parseSubtitleInfo(item);
           subtitles.push({
             path: path.join(directoryPath, item),
             name: item,
-            language: this.guessLanguage(item)
+            language: info.language,
+            author: info.author,
+            coverage: info.coverage
           });
         }
       }
@@ -92,6 +106,47 @@ export class FileSystemService {
       console.error(`Error finding subtitles in ${directoryPath}:`, err);
     }
     return subtitles;
+  }
+
+  /**
+   * Parses naming convention: Author [Coverage] {Hash}.lang.ext
+   */
+  private parseSubtitleInfo(filename: string): { author?: string, coverage?: string, language?: string } {
+    const info: any = {};
+    
+    // 1. Language detection (standard Plex .lang.ext)
+    const parts = filename.split('.');
+    if (parts.length >= 3) {
+      const langCode = parts[parts.length - 2].toLowerCase();
+      if (langCode.length === 2 || langCode.length === 3) {
+        info.language = langCode;
+      }
+    }
+
+    // 2. Author and Coverage detection
+    const baseName = filename.split('.')[0];
+    
+    // Try to find [Coverage]
+    const coverageMatch = baseName.match(/\[(.*?)\]/);
+    if (coverageMatch) {
+      info.coverage = coverageMatch[1];
+    }
+
+    // Improved Author detection:
+    // If it contains [ or {, take everything before the first one
+    if (baseName.includes('[') || baseName.includes('{')) {
+        const authorMatch = baseName.match(/^(.*?)[\s\[{]/);
+        if (authorMatch && authorMatch[1].trim()) {
+            info.author = authorMatch[1].trim();
+        }
+    } else {
+        // If it doesn't contain [ or {, it's likely just a filename matched to video
+        // e.g. "Prima Facie - National Theatre at Home.en.srt"
+        // In this case, we don't have an "Author" in the Encora sense, so we use 'Local'
+        info.author = 'Local';
+    }
+
+    return info;
   }
 
   /**
@@ -132,20 +187,6 @@ export class FileSystemService {
       console.error(`Failed to download subtitle from ${url}:`, err);
       return null;
     }
-  }
-
-  /**
-   * Basic language guesser from filename (e.g., name.en.srt)
-   */
-  private guessLanguage(filename: string): string | undefined {
-    const parts = filename.split('.');
-    if (parts.length >= 3) {
-      const langCode = parts[parts.length - 2].toLowerCase();
-      if (langCode.length === 2 || langCode.length === 3) {
-        return langCode;
-      }
-    }
-    return undefined;
   }
 
   /**
