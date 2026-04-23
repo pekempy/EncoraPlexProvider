@@ -106,7 +106,7 @@ export class EncoraMapper {
                         codec: sub.file_type.toLowerCase(),
                         language: this.mapLanguage(sub.language),
                         languageTag: this.mapLanguage(sub.language),
-                        languageCode: this.mapLanguage(sub.language) === 'en' ? 'eng' : 'und',
+                        languageCode: this.mapLanguageCode(sub.language),
                         url: sub.url,
                         format: sub.file_type.toLowerCase(),
                         title: getSubtitleTitle(sub),
@@ -138,9 +138,9 @@ export class EncoraMapper {
             Subtitle: (subtitles || []).map((s, i) => ({
                 id: 1000 + i,
                 key: s.url, // Point to our proxy URL
-                language: this.mapLanguage(s.language) === 'en' ? 'English' : s.language,
+                language: this.mapToFullName(s.language),
                 languageTag: this.mapLanguage(s.language),
-                languageCode: this.mapLanguage(s.language) === 'en' ? 'eng' : 'und',
+                languageCode: this.mapLanguageCode(s.language),
                 format: s.file_type.toLowerCase(),
                 forced: s.author === 'Forced',
                 title: getSubtitleTitle(s)
@@ -165,7 +165,7 @@ export class EncoraMapper {
                             codec: sub.file_type.toLowerCase(),
                             language: this.mapLanguage(sub.language),
                             languageTag: this.mapLanguage(sub.language),
-                            languageCode: this.mapLanguage(sub.language) === 'en' ? 'eng' : 'und',
+                            languageCode: this.mapLanguageCode(sub.language),
                             url: sub.url,
                             format: sub.file_type.toLowerCase(),
                             title: getSubtitleTitle(sub),
@@ -198,34 +198,99 @@ export class EncoraMapper {
         const lang = language.toLowerCase().trim();
 
         // Direct mapping
-        if (lang === 'english' || lang === 'en' || lang === 'eng') return 'en';
-        if (lang === 'french' || lang === 'fr' || lang === 'fra') return 'fr';
-        if (lang === 'spanish' || lang === 'es' || lang === 'spa' || lang === 'sp') return 'es';
-        if (lang === 'dutch' || lang === 'nl' || lang === 'nld') return 'nl';
-        if (lang === 'german' || lang === 'de' || lang === 'deu' || lang === 'ger') return 'de';
-        if (lang === 'italian' || lang === 'it' || lang === 'ita') return 'it';
-        if (lang === 'portuguese' || lang === 'pt' || lang === 'por') return 'pt';
-        if (lang === 'japanese' || lang === 'ja' || lang === 'jpn') return 'ja';
-        if (lang === 'russian' || lang === 'ru' || lang === 'rus') return 'ru';
-
         const langMap: Record<string, string> = {
-            'english': 'en',
-            'french': 'fr',
-            'spanish': 'es',
-            'es': 'es',
-            'sp': 'es',
-            'dutch': 'nl',
-            'german': 'de',
-            'portuguese': 'pt',
-            'japanese': 'ja',
-            'russian': 'ru',
-            'czech': 'cs',
-            'korean': 'ko',
-            'italian': 'it',
-            'chinese': 'zh'
+            'english': 'en', 'en': 'en', 'eng': 'en',
+            'french': 'fr', 'fr': 'fr', 'fra': 'fr', 'fre': 'fr',
+            'spanish': 'es', 'es': 'es', 'spa': 'es', 'sp': 'es', 'spanish (latin)': 'es-419',
+            'dutch': 'nl', 'nl': 'nl', 'nld': 'nl', 'dut': 'nl',
+            'german': 'de', 'de': 'de', 'deu': 'de', 'ger': 'de',
+            'italian': 'it', 'it': 'it', 'ita': 'it',
+            'portuguese': 'pt', 'pt': 'pt', 'por': 'pt', 'portuguese (br)': 'pt-br',
+            'japanese': 'ja', 'ja': 'ja', 'jpn': 'ja',
+            'russian': 'ru', 'ru': 'ru', 'rus': 'ru',
+            'czech': 'cs', 'cs': 'cs', 'cze': 'cs', 'ces': 'cs',
+            'korean': 'ko', 'ko': 'ko', 'kor': 'ko',
+            'hungarian': 'hu', 'hu': 'hu', 'hun': 'hu',
+            'swedish': 'sv', 'sv': 'sv', 'swe': 'sv',
+            'polish': 'pl', 'pl': 'pl', 'pol': 'pl',
+            'danish': 'da', 'da': 'da', 'dan': 'da',
+            'norwegian': 'no', 'no': 'no', 'nor': 'no',
+            'finnish': 'fi', 'fi': 'fi', 'fin': 'fi',
+            'hebrew': 'he', 'he': 'he', 'heb': 'he',
+            'cantonese': 'zh', 'mandarin': 'zh', 'chinese': 'zh', 'zh': 'zh', 'chi': 'zh', 'zho': 'zh',
+            'catalan': 'ca', 'ca': 'ca', 'cat': 'ca',
+            'yiddish': 'yi', 'yi': 'yi', 'yid': 'yi',
+            'american sign language': 'ase',
+            'british sign language': 'bsl',
+            'switzerland/german': 'gsw',
+            'filipino': 'fil', 'tl': 'fil', 'tgl': 'fil',
+            'croatian': 'hr', 'hr': 'hr', 'hrv': 'hr',
+            'serbian': 'sr', 'sr': 'sr', 'srp': 'sr',
+            'estonian': 'et', 'et': 'et', 'est': 'et',
+            'latvian': 'lv', 'lv': 'lv', 'lav': 'lv',
+            'lithuanian': 'lt', 'lt': 'lt', 'lit': 'lt',
+            'romanian': 'ro', 'ro': 'ro', 'ron': 'ro', 'rum': 'ro',
+            'greek': 'el', 'el': 'el', 'ell': 'el', 'gre': 'el',
+            'turkish': 'tr', 'tr': 'tr', 'tur': 'tr',
+            'slovak': 'sk', 'sk': 'sk', 'slk': 'sk', 'slo': 'sk',
+            'bulgarian': 'bg', 'bg': 'bg', 'bul': 'bg',
+            'scots': 'sco',
+            'malay': 'ms', 'ms': 'ms', 'msa': 'ms', 'may': 'ms',
+            'kazakh': 'kk', 'kk': 'kk', 'kaz': 'kk',
+            'georgian': 'ka', 'ka': 'ka', 'kat': 'ka', 'geo': 'ka',
+            'arabic (palestinian)': 'apc',
+            'arabic': 'ar', 'ar': 'ar', 'ara': 'ar',
+            'swahili': 'sw', 'sw': 'sw', 'swa': 'sw',
+            'albanian': 'sq', 'sq': 'sq', 'sqi': 'sq', 'alb': 'sq',
+            'macedonian': 'mk', 'mk': 'mk', 'mkd': 'mk', 'mac': 'mk',
+            'ukrainian': 'uk', 'uk': 'uk', 'ukr': 'uk',
+            'cornish': 'kw', 'kw': 'kw', 'cor': 'kw',
+            'latin': 'la', 'la': 'la', 'lat': 'la',
+            'armenian': 'hy', 'hy': 'hy', 'hye': 'hy', 'arm': 'hy',
+            'icelandic': 'is', 'is': 'is', 'isl': 'is', 'ice': 'is'
         };
 
         return langMap[lang] || (lang.length === 2 ? lang : 'und');
+    }
+
+    /**
+     * Map language to 3-letter code for Plex compatibility
+     */
+    private mapLanguageCode(language: string): string {
+        const iso1 = this.mapLanguage(language);
+        const map: Record<string, string> = {
+            'en': 'eng', 'fr': 'fra', 'es': 'spa', 'nl': 'nld', 'de': 'deu', 'it': 'ita',
+            'pt': 'por', 'pt-br': 'por', 'ja': 'jpn', 'ru': 'rus', 'cs': 'ces', 'ko': 'kor',
+            'hu': 'hun', 'sv': 'swe', 'pl': 'pol', 'da': 'dan', 'no': 'nor', 'fi': 'fin',
+            'he': 'heb', 'zh': 'zho', 'ca': 'cat', 'yi': 'yid', 'es-419': 'spa',
+            'hr': 'hrv', 'sr': 'srp', 'et': 'est', 'lv': 'lav', 'lt': 'lit', 'ro': 'ron',
+            'el': 'ell', 'tr': 'tur', 'sk': 'slk', 'bg': 'bul', 'ms': 'msa', 'kk': 'kaz',
+            'ka': 'kat', 'ar': 'ara', 'sw': 'swa', 'sq': 'sqi', 'mk': 'mkd', 'uk': 'ukr',
+            'kw': 'cor', 'la': 'lat', 'hy': 'hye', 'is': 'isl', 'fil': 'fil', 'ase': 'ase', 'bsl': 'bsl'
+        };
+        return map[iso1] || 'und';
+    }
+
+    /**
+     * Map to full display name
+     */
+    private mapToFullName(language: string): string {
+        const iso1 = this.mapLanguage(language);
+        const map: Record<string, string> = {
+            'en': 'English', 'fr': 'French', 'es': 'Spanish', 'nl': 'Dutch', 'de': 'German',
+            'it': 'Italian', 'pt': 'Portuguese', 'pt-br': 'Portuguese (BR)', 'ja': 'Japanese',
+            'ru': 'Russian', 'cs': 'Czech', 'ko': 'Korean', 'hu': 'Hungarian', 'sv': 'Swedish',
+            'pl': 'Polish', 'da': 'Danish', 'no': 'Norwegian', 'fi': 'Finnish', 'he': 'Hebrew',
+            'zh': 'Chinese', 'ca': 'Catalan', 'yi': 'Yiddish', 'es-419': 'Spanish (Latin)',
+            'hr': 'Croatian', 'sr': 'Serbian', 'et': 'Estonian', 'lv': 'Latvian', 'lt': 'Lithuanian',
+            'ro': 'Romanian', 'el': 'Greek', 'tr': 'Turkish', 'sk': 'Slovak', 'bg': 'Bulgarian',
+            'ms': 'Malay', 'kk': 'Kazakh', 'ka': 'Georgian', 'ar': 'Arabic', 'sw': 'Swahili',
+            'sq': 'Albanian', 'mk': 'Macedonian', 'uk': 'Ukrainian', 'kw': 'Cornish',
+            'la': 'Latin', 'hy': 'Armenian', 'is': 'Icelandic', 'fil': 'Filipino',
+            'ase': 'American Sign Language', 'bsl': 'British Sign Language', 'gsw': 'Switzerland/German',
+            'apc': 'Arabic (Palestinian)', 'sco': 'Scots'
+        };
+        return map[iso1] || language;
     }
 
     /**

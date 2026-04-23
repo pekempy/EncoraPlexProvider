@@ -107,24 +107,23 @@ export class PlexService {
     }
 
     /**
-     * Maps 2-letter language codes to 3-letter ISO 639-2/B codes for Plex
+     * Maps language codes to 3-letter ISO 639-2/B codes for Plex
+     * Supports a wide range of languages requested by the user.
      */
     private toPlexLanguageCode(code: string): string {
         const map: Record<string, string> = {
-            'en': 'eng',
-            'es': 'spa',
-            'fr': 'fre',
-            'de': 'ger',
-            'it': 'ita',
-            'pt': 'por',
-            'nl': 'dut',
-            'ja': 'jpn',
-            'ru': 'rus',
-            'zh': 'chi',
-            'ko': 'kor',
-            'cs': 'cze'
+            'en': 'eng', 'fr': 'fra', 'es': 'spa', 'nl': 'nld', 'de': 'deu', 'it': 'ita',
+            'pt': 'por', 'pt-br': 'por', 'ja': 'jpn', 'ru': 'rus', 'cs': 'ces', 'ko': 'kor',
+            'hu': 'hun', 'sv': 'swe', 'pl': 'pol', 'da': 'dan', 'no': 'nor', 'fi': 'fin',
+            'he': 'heb', 'zh': 'zho', 'ca': 'cat', 'yi': 'yid', 'es-419': 'spa',
+            'hr': 'hrv', 'sr': 'srp', 'et': 'est', 'lv': 'lav', 'lt': 'lit', 'ro': 'ron',
+            'el': 'ell', 'tr': 'tur', 'sk': 'slk', 'bg': 'bul', 'ms': 'msa', 'kk': 'kaz',
+            'ka': 'kat', 'ar': 'ara', 'sw': 'swa', 'sq': 'sqi', 'mk': 'mkd', 'uk': 'ukr',
+            'kw': 'cor', 'la': 'lat', 'hy': 'hye', 'is': 'isl', 'fil': 'fil', 'ase': 'ase', 'bsl': 'bsl',
+            'apc': 'ara', 'gsw': 'ger', 'sco': 'eng'
         };
-        return map[code.toLowerCase()] || code;
+        const normalized = code.toLowerCase().trim();
+        return map[normalized] || normalized;
     }
 
     /**
@@ -145,10 +144,6 @@ export class PlexService {
             
             const plexLang = this.toPlexLanguageCode(languageCode);
             
-            // Plex's manual upload API is finicky about params.
-            // Based on plexapi and Web UI inspection:
-            // We include the language code in the title to help Plex identify it,
-            // as 'languageCode' might not be a supported param on this endpoint.
             const displayTitle = title || fileName;
             const uploadTitle = `${displayTitle}.${plexLang}.${format}`;
 
@@ -158,7 +153,6 @@ export class PlexService {
                     format: format,
                 },
                 headers: {
-                    // Remove explicit Content-Type or use text/plain as fallback
                     'Content-Type': 'application/octet-stream',
                     'Accept': 'text/plain, */*',
                 }
