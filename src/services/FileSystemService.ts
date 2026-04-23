@@ -95,6 +95,46 @@ export class FileSystemService {
   }
 
   /**
+   * Finds the primary video file in a directory
+   */
+  public findVideoFile(directoryPath: string): string | null {
+    try {
+      const items = fs.readdirSync(directoryPath);
+      // Sort by size to find the largest file (most likely the video)
+      const videoFiles = items.filter(item => {
+        const ext = item.toLowerCase().split('.').pop();
+        return ['mp4', 'mkv', 'avi', 'mov', 'ts', 'm4v'].includes(ext || '');
+      }).map(item => ({
+        name: item,
+        size: fs.statSync(path.join(directoryPath, item)).size
+      })).sort((a, b) => b.size - a.size);
+
+      return videoFiles.length > 0 ? videoFiles[0].name : null;
+    } catch (err) {
+      console.error(`Error finding video file in ${directoryPath}:`, err);
+      return null;
+    }
+  }
+
+  /**
+   * Downloads a subtitle from a URL and saves it to the local directory
+   */
+  public async downloadSubtitle(url: string, directoryPath: string, filename: string): Promise<string | null> {
+    try {
+      const axios = require('axios');
+      const response = await axios.get(url, { responseType: 'arraybuffer' });
+      const filePath = path.join(directoryPath, filename);
+      
+      fs.writeFileSync(filePath, response.data);
+      console.log(`Successfully downloaded subtitle to: ${filePath}`);
+      return filePath;
+    } catch (err) {
+      console.error(`Failed to download subtitle from ${url}:`, err);
+      return null;
+    }
+  }
+
+  /**
    * Basic language guesser from filename (e.g., name.en.srt)
    */
   private guessLanguage(filename: string): string | undefined {

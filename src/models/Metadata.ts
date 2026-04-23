@@ -192,6 +192,54 @@ export interface MovieMetadata extends BaseMetadata, WithDuration, WithTaglineAn
   Studio?: Studio[];
   Rating?: Rating[];
   Subtitle?: Subtitle[];
+  Media?: Media[];
+}
+
+/**
+ * Media object representing a video file
+ */
+export interface Media {
+  id?: number;
+  videoResolution?: string;
+  bitrate?: number;
+  width?: number;
+  height?: number;
+  aspectRatio?: number;
+  audioChannels?: number;
+  audioCodec?: string;
+  videoCodec?: string;
+  container?: string;
+  videoFrameRate?: string;
+  Part: Part[];
+}
+
+/**
+ * Part object representing a file on disk
+ */
+export interface Part {
+  id?: number;
+  key: string;
+  duration?: number;
+  file: string;
+  size?: number;
+  container: string;
+  Stream?: Stream[];
+}
+
+/**
+ * Stream object representing a subtitle or audio track
+ */
+export interface Stream {
+  id: number;
+  streamType: number; // 3 for subtitle
+  codec: string;
+  language?: string;
+  languageCode?: string;
+  url?: string;
+  displayTitle?: string;
+  extendedDisplayTitle?: string;
+  format?: string;
+  forced?: boolean;
 }
 
 /**

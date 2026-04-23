@@ -19,3 +19,6 @@ coverage/
 # OS
 .DS_Store
 Thumbs.db
+
+# Misc
+docker-compose.local.yml

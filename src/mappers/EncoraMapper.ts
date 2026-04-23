@@ -8,6 +8,7 @@ import {
     Person,
     Genre,
     Subtitle,
+    Media,
 } from '../models/Metadata';
 import { EncoraRecording, EncoraSubtitle } from '../types/encora';
 import { StageMediaResponse } from '../services/StageMediaClient';
@@ -23,7 +24,8 @@ export class EncoraMapper {
     mapRecording(
         recording: EncoraRecording,
         stageMediaImages?: StageMediaResponse,
-        subtitles?: EncoraSubtitle[]
+        subtitles?: EncoraSubtitle[],
+        filename?: string
     ): MovieMetadata {
         const ratingKey = `encora-recording-${recording.id}`;
 
@@ -82,13 +84,43 @@ export class EncoraMapper {
 
         // Map subtitles
         const mappedSubtitles: Subtitle[] = subtitles ? subtitles.map(sub => ({
-            id: sub.url.startsWith('http') || sub.url.startsWith('/') ? sub.url : sub.url,
+            id: sub.url,
             language: this.mapLanguage(sub.language),
             format: sub.file_type.toLowerCase(),
             forced: sub.author === 'Forced',
         })) : [];
 
-        const metadata: MovieMetadata = {
+        // Construct Media object for modern Plex agent support
+        const media: Media[] = [];
+        if (filename && subtitles && subtitles.length > 0) {
+            const videoFilename = filename.split('/').pop() || filename;
+            const baseName = videoFilename.substring(0, videoFilename.lastIndexOf('.')) || videoFilename;
+
+            media.push({
+                Part: [{
+                    key: filename, // Use the exact key Plex sent us
+                    file: filename.startsWith('/') ? filename : filename, // Keep absolute if provided
+                    container: filename.split('.').pop()?.toLowerCase() || 'mp4',
+                    Stream: (subtitles || []).map((sub, index) => ({
+                        id: 1000 + index,
+                        streamType: 3,
+                        codec: 'srt',
+                        language: this.mapLanguage(sub.language),
+                        languageTag: this.mapLanguage(sub.language),
+                        languageCode: this.mapLanguage(sub.language) === 'en' ? 'eng' : 'und',
+                        url: sub.url,
+                        format: 'srt',
+                        title: sub.author === 'Local' ? `Local - ${sub.language}` : `Encora - ${sub.author}`,
+                        forced: sub.author === 'Forced',
+                        transient: 1,
+                        streamIdentifier: (1000 + index).toString(),
+                        canAutoSync: 0
+                    }))
+                }]
+            });
+        }
+
+        const metadata: any = {
             type: 'movie',
             ratingKey: ratingKey,
             key: constructMetadataKey(ratingKey),
@@ -104,17 +136,48 @@ export class EncoraMapper {
             art: undefined,
             Image: images.length > 0 ? images : undefined,
             Genre: genres.length > 0 ? genres : undefined,
-            Subtitle: mappedSubtitles.length > 0 ? mappedSubtitles : undefined,
+            Subtitle: (subtitles || []).map((s, i) => ({
+                id: 1000 + i,
+                key: s.url, // Point to our proxy URL
+                language: this.mapLanguage(s.language) === 'en' ? 'English' : s.language,
+                languageTag: this.mapLanguage(s.language),
+                languageCode: this.mapLanguage(s.language) === 'en' ? 'eng' : 'und',
+                format: 'srt',
+                forced: s.author === 'Forced',
+                title: s.author === 'Local' ? 'Local' : `Encora (${s.author})`
+            })),
             Role: roles.length > 0 ? roles : undefined,
+            Actor: roles.length > 0 ? roles : undefined,
             Director: recording.master ? [{ tag: recording.master }] : undefined,
             editionTitle: recording.master ? recording.master : undefined,
             Guid: [
-                { id: createExternalGuid('encora', recording.id.toString()) }
+                { id: createExternalGuid('encora', recording.id.toString()) },
+                { id: `tmdb://encora-${recording.id}` }
+            ],
+            Media: [
+                {
+                    id: 1,
+                    Part: [{
+                        id: 1,
+                        Stream: (subtitles || []).map((sub, index) => ({
+                            id: 1000 + index,
+                            streamType: 3,
+                            selected: true, // Priority flag
+                            codec: 'srt',
+                            language: this.mapLanguage(sub.language),
+                            languageTag: this.mapLanguage(sub.language),
+                            languageCode: this.mapLanguage(sub.language) === 'en' ? 'eng' : 'und',
+                            url: sub.url,
+                            format: 'srt',
+                            title: sub.author === 'Local' ? 'Local' : `Encora (${sub.author})`,
+                            transient: 1
+                        }))
+                    }]
+                }
             ],
             Studio: recording.metadata.venue ? [{ tag: recording.metadata.venue }] : undefined,
             Country: recording.metadata.city ? [{ tag: recording.metadata.city }] : undefined,
         };
-
         return metadata;
     }
 
@@ -128,65 +191,40 @@ export class EncoraMapper {
     }
 
     /**
-     * Map full language name to ISO 639-2/B code
+     * Map full language name or code to ISO 639-1 code (2-letter)
      */
-    private mapLanguage(language: string): string {
+    public mapLanguage(language: string): string {
+        if (!language) return 'und';
+
+        const lang = language.toLowerCase().trim();
+
+        // Direct mapping
+        if (lang === 'english' || lang === 'en' || lang === 'eng') return 'en';
+        if (lang === 'french' || lang === 'fr' || lang === 'fra') return 'fr';
+        if (lang === 'spanish' || lang === 'es' || lang === 'spa') return 'es';
+        if (lang === 'dutch' || lang === 'nl' || lang === 'nld') return 'nl';
+        if (lang === 'german' || lang === 'de' || lang === 'deu' || lang === 'ger') return 'de';
+        if (lang === 'italian' || lang === 'it' || lang === 'ita') return 'it';
+        if (lang === 'portuguese' || lang === 'pt' || lang === 'por') return 'pt';
+        if (lang === 'japanese' || lang === 'ja' || lang === 'jpn') return 'ja';
+        if (lang === 'russian' || lang === 'ru' || lang === 'rus') return 'ru';
+
         const langMap: Record<string, string> = {
-            'English': 'eng',
-            'French': 'fre',
-            'Spanish': 'spa',
-            'Dutch': 'dut',
-            'German': 'ger',
-            'Portuguese': 'por',
-            'Japanese': 'jpn',
-            'Russian': 'rus',
-            'Czech': 'cze',
-            'Korean': 'kor',
-            'Hungarian': 'hun',
-            'Swedish': 'swe',
-            'Polish': 'pol',
-            'Danish': 'dan',
-            'Norwegian': 'nor',
-            'Italian': 'ita',
-            'Finnish': 'fin',
-            'Hebrew': 'heb',
-            'Cantonese': 'chi',
-            'Catalan': 'cat',
-            'Yiddish': 'yid',
-            'American Sign Language': 'sgn',
-            'British Sign Language': 'sgn',
-            'Switzerland/German': 'ger',
-            'Filipino': 'fil',
-            'Croatian': 'hrv',
-            'Serbian': 'srp',
-            'Estonian': 'est',
-            'Latvian': 'lav',
-            'Lithuanian': 'lit',
-            'Romanian': 'rum',
-            'Portuguese (BR)': 'por',
-            'Greek': 'gre',
-            'Spanish (Latin)': 'spa',
-            'Mandarin': 'chi',
-            'Turkish': 'tur',
-            'Slovak': 'slo',
-            'Bulgarian': 'bul',
-            'Chinese': 'chi',
-            'Scots': 'sco',
-            'Malay': 'may',
-            'Kazakh': 'kaz',
-            'Georgian': 'geo',
-            'Arabic (Palestinian)': 'ara',
-            'Arabic': 'ara',
-            'Swahili': 'swa',
-            'Albanian': 'alb',
-            'Macedonian': 'mac',
-            'Ukrainian': 'ukr',
-            'Cornish': 'cor',
-            'Latin': 'lat',
-            'Armenian': 'arm',
+            'english': 'en',
+            'french': 'fr',
+            'spanish': 'es',
+            'dutch': 'nl',
+            'german': 'de',
+            'portuguese': 'pt',
+            'japanese': 'ja',
+            'russian': 'ru',
+            'czech': 'cs',
+            'korean': 'ko',
+            'italian': 'it',
+            'chinese': 'zh'
         };
 
-        return langMap[language] || language; // Return original if no mapping found
+        return langMap[lang] || (lang.length === 2 ? lang : 'und');
     }
 
     /**

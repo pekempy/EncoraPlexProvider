@@ -32,6 +32,8 @@ export const config = {
   },
   plex: {
     libraryBasePath: process.env.PLEX_LIBRARY_BASE_PATH || '',
+    token: process.env.PLEX_TOKEN || '',
+    serverUrl: process.env.PLEX_SERVER_URL || 'http://localhost:32400',
   },
 };
 
@@ -61,4 +63,6 @@ export function validateConfig(): void {
   console.log(`- Port: ${config.server.port}`);
   console.log(`- Base URL: ${config.server.baseUrl}`);
   console.log(`- Library Base Path: ${config.plex.libraryBasePath || 'NOT SET (NFO fallback will be disabled)'}`);
+  console.log(`- Plex Token: ${config.plex.token ? 'Set (masked)' : 'NOT SET'}`);
+  console.log(`- Plex Server URL: ${config.plex.serverUrl}`);
 }
