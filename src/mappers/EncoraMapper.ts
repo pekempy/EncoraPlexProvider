@@ -25,9 +25,12 @@ export class EncoraMapper {
         recording: EncoraRecording,
         stageMediaImages?: StageMediaResponse,
         subtitles?: EncoraSubtitle[],
-        filename?: string
+        filename?: string,
+        aliasId?: number
     ): MovieMetadata {
-        const ratingKey = `encora-recording-${recording.id}`;
+        const ratingKey = aliasId && aliasId !== recording.id 
+            ? `encora-recording-${recording.id}-alias-${aliasId}`
+            : `encora-recording-${recording.id}`;
 
         // Create performer URL map
         const performerUrlMap: Record<number, string> = {};

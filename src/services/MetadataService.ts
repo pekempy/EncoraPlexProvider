@@ -50,11 +50,12 @@ export class MetadataService {
   ): Promise<MetadataResponse> {
     console.log(`Metadata request for ratingKey: ${ratingKey}`);
 
-    // Case 1: Encora ratingKey (encora-recording-{ID})
-    const encoraMatch = ratingKey.match(/^encora-recording-(\d+)$/);
+    // Case 1: Encora ratingKey (encora-recording-{ID} or encora-recording-{ID}-alias-{ALIAS_ID})
+    const encoraMatch = ratingKey.match(/^encora-recording-(\d+)(?:-alias-(\d+))?$/);
     if (encoraMatch) {
       const id = parseInt(encoraMatch[1], 10);
-      return this.encoraService.matchRecording(id);
+      const aliasId = encoraMatch[2] ? parseInt(encoraMatch[2], 10) : undefined;
+      return this.encoraService.matchRecording(id, undefined, aliasId);
     }
 
     // Case 2: Local NFO ratingKey (local-nfo-{BASE64_PATH})

@@ -113,7 +113,7 @@ export class MatchService {
     }
 
     if (idToMatch && !skipEncora) {
-      const encoraResult = await this.encoraService.matchRecording(idToMatch);
+      const encoraResult = await this.encoraService.matchRecording(idToMatch, request.filename);
 
       // If Encora returns results, use them
       if (encoraResult.MediaContainer.size > 0) {

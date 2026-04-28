@@ -23,10 +23,8 @@ export class FileSystemService {
     const idPattern = `{e-${recordingId}}`;
     const idPatternAlt = `{e ${recordingId}}`;
 
-    // Simple one-level deep scan for now to avoid massive recursion
-    // The user's example is in /srv/plex/Plex/Theatre/
-    // So we might need to scan subdirectories
-    return this.searchDirectoryRecursive(basePath, idPattern, idPatternAlt, 2);
+    // Increase depth to 5 to handle Show/Tour/Type/Recording structure
+    return this.searchDirectoryRecursive(basePath, idPattern, idPatternAlt, 5);
   }
 
   /**

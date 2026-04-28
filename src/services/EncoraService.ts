@@ -45,7 +45,7 @@ export class EncoraService {
     /**
      * Get recording details and map to Plex metadata
      */
-    public async matchRecording(id: number, filename?: string): Promise<MetadataResponse> {
+    public async matchRecording(id: number, filename?: string, aliasId?: number): Promise<MetadataResponse> {
         try {
             // 1. Get core recording details from Encora
             const recording = await this.encoraClient.getRecordingDetails(id);
@@ -73,7 +73,31 @@ export class EncoraService {
             let localSubtitles: any[] = [];
             if (config.plex.libraryBasePath) {
                 try {
-                    const localDir = this.fileSystemService.findRecordingDirectory(id);
+                    let localDir: string | null = null;
+                    
+                    // Priority 1: Use directory of provided filename
+                    if (filename) {
+                        const fullPath = path.isAbsolute(filename) ? filename : path.join(config.plex.libraryBasePath, filename);
+                        localDir = path.dirname(fullPath);
+                        if (!fs.existsSync(localDir)) {
+                            localDir = null;
+                        } else {
+                            console.log(`[EncoraService] Using directory from provided filename: ${localDir}`);
+                        }
+                    }
+
+                    // Priority 2: Find by canonical ID
+                    if (!localDir) {
+                        localDir = this.fileSystemService.findRecordingDirectory(id);
+                        if (localDir) console.log(`[EncoraService] Found directory by canonical ID ${id}: ${localDir}`);
+                    }
+
+                    // Priority 3: Find by alias ID
+                    if (!localDir && aliasId) {
+                        localDir = this.fileSystemService.findRecordingDirectory(aliasId);
+                        if (localDir) console.log(`[EncoraService] Found directory by alias ID ${aliasId}: ${localDir}`);
+                    }
+
                     if (localDir) {
                         const existingLocal = this.fileSystemService.findSubtitles(localDir);
                         console.log(`Found ${existingLocal.length} existing local subtitles in ${localDir}`);
@@ -142,7 +166,7 @@ export class EncoraService {
             }
 
             console.log(`[EncoraService] Passing filename to mapper: ${filename || 'UNDEFINED'}`);
-            const metadata = this.mapper.mapRecording(recording, stageMediaImages, subtitles, filename);
+            const metadata = this.mapper.mapRecording(recording, stageMediaImages, subtitles, filename, aliasId);
 
             // 4. Force-upload local subtitles to Plex if configured
             if (config.plex.token && localSubtitles.length > 0) {
